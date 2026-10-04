@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opportunités Google TV Européenne</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#202224;color:#fff;font-family:Arial,sans-serif}
+.wrap{max-width:720px;margin:40px auto;padding:20px}.card{background:#111;border-radius:24px;padding:28px;box-shadow:0 8px 30px #0005}
+h1{margin:0 0 22px;font-size:30px}h2{font-size:24px}label{display:block;margin:14px 0 6px;color:#ddd}
+input,select,button{width:100%;padding:14px;border-radius:10px;border:1px solid #666;font-size:16px}
+button{border:0;background:#1677ff;color:#fff;font-weight:700;margin-top:18px;cursor:pointer}
+.secondary{background:#444}.hidden{display:none}.item{background:#292b2e;border-radius:12px;padding:15px;margin:12px 0}
+.small{color:#aaa;font-size:13px}.ok{color:#65e06f}.pending{color:#ffd45a}
+nav{display:flex;gap:10px;margin-bottom:18px}nav button{margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="register" class="card">
+    <h1>Opportunités Google TV Européenne</h1>
+    <p>Formulaire d’inscription</p><p class="small">Après l’envoi, votre inscription sera examinée, validée et approuvée par votre Leader.</p>
+    <label>Nom et prénom</label><input id="name" autocomplete="name">
+    <label>Adresse email</label><input id="email" type="email" autocomplete="email">
+    <label>Pays</label><input id="country">
+    <label>Numéro de téléphone</label><input id="phone" autocomplete="tel">
+    <label>Numéro de paiement</label><input id="payment">
+    <button onclick="register()">Envoyer l'inscription</button>
+    <p id="msg"></p>
+    <button class="secondary" onclick="showAdmin()">Administration</button>
+  </div>
+
+  <div id="adminLogin" class="card hidden">
+    <h1>Administration</h1>
+    <p>Cette page est réservée au responsable. Entrez le mot de passe.</p>
+    <label>Mot de passe</label>
+    <input id="adminPassword" type="password" autocomplete="current-password">
+    <button onclick="loginAdmin()">Se connecter</button>
+    <button class="secondary" onclick="showRegister()">Retour à l’inscription</button>
+    <p id="loginMsg"></p>
+  </div>
+
+  <div id="admin" class="card hidden">
+    <nav>
+      <button onclick="showRegister()">Inscription</button>
+      <button class="secondary" onclick="clearAll()">Effacer les données locales</button>
+    </nav>
+    <h1>Administration – Inscriptions</h1>
+    <p class="small">Les inscriptions sont examinées, validées et approuvées par le Leader.</p>
+    <div id="list"></div>
+  </div>
+</div>
+<script>
+const API_URL = "COLLE_ICI_L_URL_DE_TON_WEB_APP_APPS_SCRIPT";
+const ADMIN_PASSWORD = "Google1@3";
+async function api(action,payload={}){if(API_URL.startsWith("COLLE_"))throw Error("API non configuree");const r=await fetch(API_URL+"?action="+encodeURIComponent(action),{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});if(!r.ok)throw Error("Serveur "+r.status);return r.json()}
+function setMsg(id,t,c){const e=document.getElementById(id);e.textContent=t;e.style.color=c}
+async function register(){const name=document.getElementById("name").value.trim(),email=document.getElementById("email").value.trim(),country=document.getElementById("country").value.trim(),phone=document.getElementById("phone").value.trim(),payment=document.getElementById("payment").value.trim();if(!name||!email||!country||!phone||!payment){setMsg("msg","Veuillez remplir tous les champs.","#ff7676");return}try{const r=await api("register",{action:"register",name,email,country,phone,payment});if(r.ok){setMsg("msg","Inscription envoyée avec succès. Votre Leader examinera votre dossier.","#65e06f");["name","email","country","phone","payment"].forEach(id=>document.getElementById(id).value="")}else setMsg("msg",r.message||"Impossible d'envoyer l'inscription.","#ff7676")}catch(e){setMsg("msg","Le serveur n'est pas encore connecté. Configure l'URL Apps Script.","#ff7676")}}
+function showAdmin(){document.getElementById("register").classList.add("hidden");document.getElementById("admin").classList.add("hidden");document.getElementById("adminLogin").classList.remove("hidden");document.getElementById("adminPassword").value="";document.getElementById("loginMsg").textContent=""}
+async function loginAdmin(){const p=document.getElementById("adminPassword").value;if(p!==ADMIN_PASSWORD){setMsg("loginMsg","Mot de passe incorrect.","#ff7676");return}try{const r=await api("list",{action:"list",password:p});if(!r.ok)throw Error();document.getElementById("adminLogin").classList.add("hidden");document.getElementById("admin").classList.remove("hidden");render(r.data||[])}catch(e){setMsg("loginMsg","Impossible de joindre le serveur. Vérifie l'URL Apps Script.","#ff7676")}}
+function showRegister(){document.getElementById("admin").classList.add("hidden");document.getElementById("adminLogin").classList.add("hidden");document.getElementById("register").classList.remove("hidden")}
+function render(x){const list=document.getElementById("list");if(!x.length){list.innerHTML="<p class='small'>Aucune inscription pour le moment.</p>";return}list.innerHTML=x.map(a=>`<div class="item"><b>${esc(a.name)}</b><br>${esc(a.email)}<br>${esc(a.country)} — ${esc(a.phone)}<br>Numéro de paiement : ${esc(a.payment)}<br><span class="small">${esc(a.date)}</span><br><span class="${a.status==="Approuvée"?"ok":a.status==="Refusée"?"":"pending"}">${esc(a.status)}</span>${a.status==="En attente"?`<button onclick="changeStatus('${escAttr(a.id)}','Approuvée')">Approuver</button><button class="secondary" onclick="changeStatus('${escAttr(a.id)}','Refusée')">Refuser</button>`:""}</div>`).join("")}
+async function changeStatus(id,status){try{const p=ADMIN_PASSWORD;const r=await api("status",{action:"status",password:p,id,status});if(!r.ok)throw Error();const x=await api("list",{action:"list",password:p});render(x.data||[])}catch(e){alert("Impossible de modifier cette inscription.")}}
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&!document.getElementById("adminLogin").classList.contains("hidden"))loginAdmin()});
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}function escAttr(s){return String(s).replace(/['\]/g,c=>"\"+c)}
+</script>
+</body>
+</html>
